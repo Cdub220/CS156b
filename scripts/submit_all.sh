@@ -1,8 +1,4 @@
 #!/bin/bash
-# Build the test-image cache (preprocess) then run inference on the test
-# set (predict). Training is skipped -- best.pt from the previous run is
-# reused. preprocess is idempotent: already-cached images are skipped, so
-# only the new test images get processed.
 
 set -e
 
