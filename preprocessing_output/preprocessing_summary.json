@@ -1,0 +1,49 @@
+{
+  "num_samples_processed": 100,
+  "num_csv_rows_checked": 100,
+  "num_missing_paths_skipped": 0,
+  "image_tensor_shape": [
+    100,
+    3,
+    224,
+    224
+  ],
+  "labels_shape": [
+    100,
+    9
+  ],
+  "masks_shape": [
+    100,
+    9
+  ],
+  "label_columns": [
+    "No Finding",
+    "Enlarged Cardiomediastinum",
+    "Cardiomegaly",
+    "Lung Opacity",
+    "Pneumonia",
+    "Pleural Effusion",
+    "Pleural Other",
+    "Fracture",
+    "Support Devices"
+  ],
+  "uncertain_policy": "ignore",
+  "image_size": 224,
+  "mean_known_labels_per_image": 2.2200000286102295,
+  "mean_positive_labels_per_image": 1.8700000047683716,
+  "total_known_label_entries": 222,
+  "total_positive_label_entries": 187,
+  "view_counts": {
+    "Frontal": 92,
+    "Lateral": 8
+  },
+  "sex_counts": {
+    "Male": 53,
+    "Female": 47
+  },
+  "ap_pa_counts": {
+    "AP": 77,
+    "PA": 15,
+    "NaN": 8
+  }
+}
