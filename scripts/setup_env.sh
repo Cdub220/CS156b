@@ -3,11 +3,8 @@
 
 set -e
 
-CONDA_ROOT=/resnick/groups/CS156b/from_central/2026/JSC/miniconda
+CONDA_ROOT=/resnick/groups/CS156b/from_central/2026/JSC/env/miniconda
 
-# If you haven't actually run the miniconda installer yet, do this first:
-#   bash "$CONDA_ROOT/Miniconda3-latest-Linux-x86_64.sh" -b -p "$CONDA_ROOT/miniconda"
-# (and then change the source line below to "$CONDA_ROOT/miniconda/etc/profile.d/conda.sh")
 
 source "$CONDA_ROOT/etc/profile.d/conda.sh"
 
