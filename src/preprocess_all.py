@@ -24,18 +24,16 @@ def get_full_path(path_value):
     if p.is_absolute():
         return p
 
-    # Try as-is (handles "train/...", "test/...", and "CheXpert-v1.0/..." paths).
     direct = DATA_ROOT / p
     if direct.exists():
         return direct
 
-    # Fall back to train/ then test/ in case the CSV stores bare patient paths.
     for subdir in ("train", "test"):
         candidate = DATA_ROOT / subdir / p
         if candidate.exists():
             return candidate
 
-    return direct  # will fail in process_one and get logged to _errors.txt
+    return direct 
 
 
 def pad_to_square(img):
