@@ -1,23 +1,16 @@
 #!/bin/bash
-# Submit train + predict, chained.
-# The preprocessing cache is already built and reused across runs, so we
-# skip preprocess by default. Uncomment the block below if you ever need
-# to rebuild the cache (e.g. changed image size, lost the cache dir).
+# Build the test-image cache (preprocess) then run inference on the test
+# set (predict). Training is skipped -- best.pt from the previous run is
+# reused. preprocess is idempotent: already-cached images are skipped, so
+# only the new test images get processed.
 
 set -e
 
-# --- Optional: rebuild the image cache ---
-# PRE_ID=$(sbatch --parsable scripts/preprocess.sbatch)
-# echo "preprocess: $PRE_ID"
-# TRAIN_DEP="--dependency=afterok:$PRE_ID"
+PRE_ID=$(sbatch --parsable scripts/preprocess.sbatch)
+echo "preprocess: $PRE_ID"
 
-TRAIN_DEP=""
-
-TRAIN_ID=$(sbatch --parsable $TRAIN_DEP scripts/train.sbatch)
-echo "train:      $TRAIN_ID"
-
-PRED_ID=$(sbatch --parsable --dependency=afterok:$TRAIN_ID scripts/predict.sbatch)
-echo "predict:    $PRED_ID  (waits on $TRAIN_ID)"
+PRED_ID=$(sbatch --parsable --dependency=afterok:$PRE_ID scripts/predict.sbatch)
+echo "predict:    $PRED_ID  (waits on $PRE_ID)"
 
 echo
 echo "Watch with:  squeue -u \$USER"

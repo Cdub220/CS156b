@@ -7,7 +7,11 @@ from PIL import Image, ImageOps
 
 
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
-TRAIN_CSV = DATA_ROOT / "student_labels" / "train2023.csv"
+
+INPUT_CSVS = [
+    DATA_ROOT / "student_labels" / "train2023.csv",
+    DATA_ROOT / "student_labels" / "test_ids.csv",
+]
 OUT_ROOT = Path("/resnick/groups/CS156b/from_central/2026/JSC/cache_320")
 
 IMAGE_SIZE = 320
@@ -20,11 +24,18 @@ def get_full_path(path_value):
     if p.is_absolute():
         return p
 
-    data_path = DATA_ROOT / p
-    if data_path.exists():
-        return data_path
+    # Try as-is (handles "train/...", "test/...", and "CheXpert-v1.0/..." paths).
+    direct = DATA_ROOT / p
+    if direct.exists():
+        return direct
 
-    return DATA_ROOT / "train" / p
+    # Fall back to train/ then test/ in case the CSV stores bare patient paths.
+    for subdir in ("train", "test"):
+        candidate = DATA_ROOT / subdir / p
+        if candidate.exists():
+            return candidate
+
+    return direct  # will fail in process_one and get logged to _errors.txt
 
 
 def pad_to_square(img):
@@ -68,8 +79,14 @@ def process_one(rel_path):
 def main():
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
-    df = pd.read_csv(TRAIN_CSV)
-    paths = df["Path"].tolist()
+    paths = []
+    for csv_path in INPUT_CSVS:
+        if not csv_path.exists():
+            print(f"Skipping missing CSV: {csv_path}")
+            continue
+        df = pd.read_csv(csv_path)
+        paths.extend(df["Path"].tolist())
+        print(f"Loaded {len(df):,} rows from {csv_path.name}")
 
     print(f"Preprocessing {len(paths):,} images")
     print(f"Output: {OUT_ROOT}")

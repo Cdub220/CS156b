@@ -12,7 +12,7 @@ from model import DenseNet121
 
 
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
-TEST_CSV = Path("/resnick/groups/CS156b/from_central/2026/JSC/outputs/densenet121/val_split.csv")
+TEST_CSV = DATA_ROOT / "student_labels" / "test_ids.csv"
 CACHE_DIR = Path("/resnick/groups/CS156b/from_central/2026/JSC/cache_320")
 
 CKPT_PATH = Path("/resnick/groups/CS156b/from_central/2026/JSC/outputs/densenet121/best.pt")
