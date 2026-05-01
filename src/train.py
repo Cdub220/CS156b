@@ -206,10 +206,26 @@ def main():
     print(f"Ignore uncertain (=0): {IGNORE_UNCERTAIN}")
 
     df = pd.read_csv(TRAIN_CSV)
+    print(f"Loaded {len(df):,} rows from CSV")
 
     missing_cols = [col for col in LABEL_COLS if col not in df.columns]
     if missing_cols:
         raise ValueError(f"Missing label columns: {missing_cols}")
+
+    # Drop rows whose preprocessed PNG isn't in the cache (e.g. CheXpert-style
+    # paths that preprocess_all.py couldn't resolve). One walk of the cache is
+    # much faster than 178k individual stat() calls on the network FS.
+    print("Scanning cache directory...")
+    cache_set = {
+        str(p.relative_to(CACHE_DIR).with_suffix(""))
+        for p in CACHE_DIR.rglob("*.png")
+    }
+    print(f"Found {len(cache_set):,} cached images")
+
+    mask = df["Path"].apply(lambda p: str(Path(p).with_suffix("")) in cache_set)
+    n_missing = int((~mask).sum())
+    df = df[mask].reset_index(drop=True)
+    print(f"Dropped {n_missing:,} rows with no cached image; {len(df):,} remain")
 
     train_df, val_df = make_patient_split(df)
 
