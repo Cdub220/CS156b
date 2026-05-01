@@ -111,7 +111,15 @@ def build_labels_and_mask(row, label_cols):
             labels.append(0.0)
             mask.append(0.0)
 
+        elif value == 1:
+            labels.append(1.0)
+            mask.append(1.0)
+
         elif value == -1:
+            labels.append(0.0)
+            mask.append(1.0)
+
+        elif value == 0:
             if UNCERTAIN_POLICY == "ignore":
                 labels.append(0.0)
                 mask.append(0.0)
@@ -123,14 +131,6 @@ def build_labels_and_mask(row, label_cols):
                 mask.append(1.0)
             else:
                 raise ValueError("Bad UNCERTAIN_POLICY")
-
-        elif value == 0:
-            labels.append(0.0)
-            mask.append(1.0)
-
-        elif value == 1:
-            labels.append(1.0)
-            mask.append(1.0)
 
         else:
             labels.append(0.0)
