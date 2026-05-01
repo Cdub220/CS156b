@@ -3,7 +3,7 @@
 
 set -e
 
-CONDA_ROOT=/resnick/groups/CS156b/from_central/2026/JSC/env/miniconda
+CONDA_ROOT=/resnick/groups/CS156b/from_central/2026/JSC/miniconda
 
 
 source "$CONDA_ROOT/etc/profile.d/conda.sh"

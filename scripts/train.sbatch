@@ -15,7 +15,7 @@
 set -e
 mkdir -p logs
 
-source /resnick/groups/CS156b/from_central/2026/JSC/env/miniconda/etc/profile.d/conda.sh
+source /resnick/groups/CS156b/from_central/2026/JSC/miniconda/etc/profile.d/conda.sh
 conda activate cs156b
 
 cd "$SLURM_SUBMIT_DIR"
