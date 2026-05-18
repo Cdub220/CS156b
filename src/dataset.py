@@ -8,13 +8,6 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 
-#label convention:
-#   1  -> positive
-#   0  -> uncertain
-#  -1  -> negative
-#  NaN -> missing / unmentioned
-#
-
 LABEL_COLS = [
     "No Finding",
     "Enlarged Cardiomediastinum",
@@ -31,7 +24,12 @@ IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
-def build_labels_and_mask(row, ignore_uncertain=False):
+def compute_label_means(df):
+    # Mean of non-NaN labels per pathology, computed once on train data.
+    return {col: float(df[col].dropna().mean()) for col in LABEL_COLS}
+
+
+def build_labels_and_mask(row, ignore_uncertain=False, label_means=None):
     labels = np.zeros(len(LABEL_COLS), dtype=np.float32)
     mask = np.zeros(len(LABEL_COLS), dtype=np.float32)
 
@@ -39,7 +37,11 @@ def build_labels_and_mask(row, ignore_uncertain=False):
         value = row[col]
 
         if pd.isna(value):
-            # Missing not graded, don't compute loss for it.
+            if label_means is not None:
+                # Mean imputation: fill with the pathology's average label.
+                labels[i] = label_means[col]
+                mask[i] = 1.0
+            # else: leave as zero with mask=0 (label is ignored in loss)
             continue
 
         if value == 0 and ignore_uncertain:
@@ -84,11 +86,19 @@ def make_eval_transform(image_size):
 
 
 class ChestXrayDataset(Dataset):
-    def __init__(self, df, cache_root, transform, ignore_uncertain=False):
+    def __init__(self, df, cache_root, transform, ignore_uncertain=False,
+                 label_means=None, target_col=None):
         self.df = df.reset_index(drop=True)
         self.cache_root = Path(cache_root)
         self.transform = transform
         self.ignore_uncertain = ignore_uncertain
+        self.label_means = label_means
+
+        # If target_col is set, only return that one pathology's label
+        # (so single-output models can use the same dataset class).
+        self.target_col = target_col
+        if target_col is not None:
+            self.target_idx = LABEL_COLS.index(target_col)
 
     def __len__(self):
         return len(self.df)
@@ -102,8 +112,15 @@ class ChestXrayDataset(Dataset):
         img = Image.open(path).convert("L")
         img = self.transform(img)
 
-        labels_np, mask_np = build_labels_and_mask(row, self.ignore_uncertain)
-        labels = torch.from_numpy(labels_np)
-        mask = torch.from_numpy(mask_np)
+        labels_np, mask_np = build_labels_and_mask(
+            row, self.ignore_uncertain, self.label_means,
+        )
+
+        if self.target_col is not None:
+            labels = torch.tensor([labels_np[self.target_idx]], dtype=torch.float32)
+            mask = torch.tensor([mask_np[self.target_idx]], dtype=torch.float32)
+        else:
+            labels = torch.from_numpy(labels_np)
+            mask = torch.from_numpy(mask_np)
 
         return img, labels, mask
