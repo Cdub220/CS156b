@@ -56,6 +56,15 @@ def slugify(name):
     return name.lower().replace(" ", "_").replace("/", "_")
 
 
+def infer_view(path_str):
+    s = str(path_str).lower()
+    if "frontal" in s:
+        return "Frontal"
+    if "lateral" in s:
+        return "Lateral"
+    return None
+
+
 @torch.no_grad()
 def run_inference(model, loader, device):
     model.eval()
@@ -134,12 +143,16 @@ def main():
     df = pd.read_csv(TEST_CSV)
     print(f"\nPredicting {len(df):,} rows")
 
+    # test_ids.csv has no Frontal/Lateral column, so infer from the path.
+    views = df["Path"].apply(infer_view)
+    print("View counts (inferred from path):")
+    print(views.value_counts(dropna=False).to_string())
+
     # Pre-allocate output array; fill it view-by-view.
     all_preds = np.zeros((len(df), len(LABEL_COLS)), dtype=np.float32)
 
     for view in VIEWS:
-        view_mask = (df["Frontal/Lateral"] == view).values
-        view_indices = np.where(view_mask)[0]
+        view_indices = np.where(views.values == view)[0]
 
         if len(view_indices) == 0:
             print(f"\n[{view}] no rows to predict, skipping")
@@ -154,10 +167,9 @@ def main():
 
         all_preds[view_indices] = view_preds
 
-    # Any rows whose Frontal/Lateral was missing/unknown stay at zeros.
-    unknown = (~df["Frontal/Lateral"].isin(VIEWS)).sum()
+    unknown = int(views.isna().sum())
     if unknown > 0:
-        print(f"\nWarning: {unknown} rows have unknown view, predictions left as 0")
+        print(f"\nWarning: {unknown} rows have unknown view, predictions left at 0")
 
     all_preds = np.clip(all_preds, CLIP_MIN, CLIP_MAX)
 
