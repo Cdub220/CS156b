@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import os
 import random
 import re
 import time
@@ -17,11 +18,12 @@ from dataset import (
     make_eval_transform,
     make_train_transform,
 )
-from model import DenseNet121
+from model import make_backbone
 
 
-# Bump RUN_NAME for every new training run so outputs don't overwrite.
-RUN_NAME = "v4_multitask_no_imputation"
+
+BACKBONE = os.environ.get("CS156B_BACKBONE", "densenet121")
+RUN_NAME = os.environ.get("CS156B_RUN_NAME", "v4_multitask_no_imputation")
 
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
 TRAIN_CSV = DATA_ROOT / "student_labels" / "train2023.csv"
@@ -181,6 +183,7 @@ def save_checkpoint(model, path, epoch, val_mse):
             "val_mse": val_mse,
             "label_cols": LABEL_COLS,
             "image_size": IMAGE_SIZE,
+            "backbone": BACKBONE,
         },
         path,
     )
@@ -191,6 +194,7 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"=== TRAIN ({RUN_NAME}) ===")
+    print(f"Backbone: {BACKBONE}")
     print(f"CSV: {TRAIN_CSV}")
     print(f"Cache: {CACHE_DIR}")
     print(f"Output: {OUT_DIR}")
@@ -278,7 +282,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\nDevice: {device}")
 
-    model = DenseNet121(num_outputs=len(LABEL_COLS), pretrained=True).to(device)
+    model = make_backbone(BACKBONE, num_outputs=len(LABEL_COLS), pretrained=True).to(device)
 
     optimizer = torch.optim.AdamW(
         [

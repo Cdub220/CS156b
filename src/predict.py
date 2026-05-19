@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import time
 
 import numpy as np
@@ -8,11 +9,13 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
 from dataset import LABEL_COLS, make_eval_transform
-from model import DenseNet121
+from model import make_backbone
 
 
-# Must match the RUN_NAME used in train.py.
-RUN_NAME = "v4_multitask_no_imputation"
+# RUN_NAME picks which run's checkpoint we load. The backbone name is
+# read from the checkpoint itself (saved during training), so we don't
+# need to know it here.
+RUN_NAME = os.environ.get("CS156B_RUN_NAME", "v4_multitask_no_imputation")
 
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
 TEST_CSV = DATA_ROOT / "student_labels" / "test_ids.csv"
@@ -87,9 +90,14 @@ def main():
     print(f"TTA: {USE_TTA}")
 
     ckpt = torch.load(CKPT_PATH, map_location="cpu")
+    # Backbone name is saved in the checkpoint during training, so predict
+    # always uses the right architecture without needing a separate setting.
+    backbone_name = ckpt.get("backbone", "densenet121")
+    print(f"Backbone (from checkpoint): {backbone_name}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = DenseNet121(num_outputs=len(LABEL_COLS), pretrained=False).to(device)
+    model = make_backbone(backbone_name, num_outputs=len(LABEL_COLS),
+                          pretrained=False).to(device)
     model.load_state_dict(ckpt["state_dict"])
 
     df = pd.read_csv(TEST_CSV)
