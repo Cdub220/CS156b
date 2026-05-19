@@ -21,7 +21,7 @@ from model import DenseNet121
 
 
 # Bump RUN_NAME for every new training run so outputs don't overwrite.
-RUN_NAME = "v3_multitask_imputed"
+RUN_NAME = "v4_multitask_no_imputation"
 
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
 TRAIN_CSV = DATA_ROOT / "student_labels" / "train2023.csv"
@@ -45,7 +45,7 @@ USE_HFLIP = True
 USE_AMP = True
 SEED = 42
 
-USE_MEAN_IMPUTATION = True
+USE_MEAN_IMPUTATION = False
 
 
 def set_seed(seed):

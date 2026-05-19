@@ -12,7 +12,7 @@ from model import DenseNet121
 
 
 # Must match the RUN_NAME used in train.py.
-RUN_NAME = "v3_multitask_imputed"
+RUN_NAME = "v4_multitask_no_imputation"
 
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
 TEST_CSV = DATA_ROOT / "student_labels" / "test_ids.csv"
