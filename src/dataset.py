@@ -1,11 +1,21 @@
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
+
+
+_CLAHE_OP = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+
+
+def apply_clahe(pil_img_grayscale):
+    arr = np.array(pil_img_grayscale, dtype=np.uint8)
+    arr = _CLAHE_OP.apply(arr)
+    return Image.fromarray(arr)
 
 
 LABEL_COLS = [
@@ -87,12 +97,13 @@ def make_eval_transform(image_size):
 
 class ChestXrayDataset(Dataset):
     def __init__(self, df, cache_root, transform, ignore_uncertain=False,
-                 label_means=None, target_col=None):
+                 label_means=None, target_col=None, use_clahe=False):
         self.df = df.reset_index(drop=True)
         self.cache_root = Path(cache_root)
         self.transform = transform
         self.ignore_uncertain = ignore_uncertain
         self.label_means = label_means
+        self.use_clahe = use_clahe
 
         # If target_col is set, only return that one pathology's label
         # (so single-output models can use the same dataset class).
@@ -110,6 +121,8 @@ class ChestXrayDataset(Dataset):
         path = self.cache_root / Path(row["Path"]).with_suffix(".png")
 
         img = Image.open(path).convert("L")
+        if self.use_clahe:
+            img = apply_clahe(img)
         img = self.transform(img)
 
         labels_np, mask_np = build_labels_and_mask(

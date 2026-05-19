@@ -8,7 +8,7 @@ import torch
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
-from dataset import LABEL_COLS, make_eval_transform
+from dataset import LABEL_COLS, apply_clahe, make_eval_transform
 from model import make_backbone
 
 
@@ -37,10 +37,11 @@ CLIP_MAX = 1.0
 
 
 class InferenceDataset(Dataset):
-    def __init__(self, df, cache_root, transform):
+    def __init__(self, df, cache_root, transform, use_clahe=False):
         self.df = df.reset_index(drop=True)
         self.cache_root = Path(cache_root)
         self.transform = transform
+        self.use_clahe = use_clahe
 
     def __len__(self):
         return len(self.df)
@@ -50,6 +51,8 @@ class InferenceDataset(Dataset):
         path = self.cache_root / Path(row["Path"]).with_suffix(".png")
 
         img = Image.open(path).convert("L")
+        if self.use_clahe:
+            img = apply_clahe(img)
         img = self.transform(img)
 
         return img, idx
@@ -90,10 +93,10 @@ def main():
     print(f"TTA: {USE_TTA}")
 
     ckpt = torch.load(CKPT_PATH, map_location="cpu")
-    # Backbone name is saved in the checkpoint during training, so predict
-    # always uses the right architecture without needing a separate setting.
     backbone_name = ckpt.get("backbone", "densenet121")
+    use_clahe = ckpt.get("use_clahe", False)
     print(f"Backbone (from checkpoint): {backbone_name}")
+    print(f"CLAHE (from checkpoint):    {use_clahe}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = make_backbone(backbone_name, num_outputs=len(LABEL_COLS),
@@ -103,7 +106,8 @@ def main():
     df = pd.read_csv(TEST_CSV)
     print(f"\nPredicting {len(df):,} rows")
 
-    dataset = InferenceDataset(df, CACHE_DIR, make_eval_transform(IMAGE_SIZE))
+    dataset = InferenceDataset(df, CACHE_DIR, make_eval_transform(IMAGE_SIZE),
+                                use_clahe=use_clahe)
     loader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,

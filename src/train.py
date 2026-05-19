@@ -24,6 +24,7 @@ from model import make_backbone
 
 BACKBONE = os.environ.get("CS156B_BACKBONE", "densenet121")
 RUN_NAME = os.environ.get("CS156B_RUN_NAME", "v4_multitask_no_imputation")
+USE_CLAHE = os.environ.get("CS156B_USE_CLAHE", "0") == "1"
 
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
 TRAIN_CSV = DATA_ROOT / "student_labels" / "train2023.csv"
@@ -184,6 +185,7 @@ def save_checkpoint(model, path, epoch, val_mse):
             "label_cols": LABEL_COLS,
             "image_size": IMAGE_SIZE,
             "backbone": BACKBONE,
+            "use_clahe": USE_CLAHE,
         },
         path,
     )
@@ -204,6 +206,7 @@ def main():
     print(f"LR head / backbone: {LR_HEAD} / {LR_BACKBONE}")
     print(f"Warmup epochs (head only): {WARMUP_EPOCHS}")
     print(f"Mean imputation: {USE_MEAN_IMPUTATION}")
+    print(f"CLAHE: {USE_CLAHE}")
 
     df = pd.read_csv(TRAIN_CSV)
     print(f"\nLoaded {len(df):,} rows from CSV")
@@ -250,6 +253,7 @@ def main():
         transform=make_train_transform(IMAGE_SIZE, hflip=USE_HFLIP),
         ignore_uncertain=IGNORE_UNCERTAIN,
         label_means=label_means,
+        use_clahe=USE_CLAHE,
     )
 
     val_dataset = ChestXrayDataset(
@@ -258,6 +262,7 @@ def main():
         transform=make_eval_transform(IMAGE_SIZE),
         ignore_uncertain=IGNORE_UNCERTAIN,
         label_means=label_means,
+        use_clahe=USE_CLAHE,
     )
 
     train_loader = DataLoader(
