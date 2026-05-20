@@ -26,6 +26,16 @@ BACKBONE = os.environ.get("CS156B_BACKBONE", "densenet121")
 RUN_NAME = os.environ.get("CS156B_RUN_NAME", "v4_multitask_no_imputation")
 USE_CLAHE = os.environ.get("CS156B_USE_CLAHE", "0") == "1"
 
+# Optional path to a CSV of pseudo-labels (same format as train2023.csv:
+# a Path column plus the 9 pathology columns with float values in [-1, 1]).
+# When set, these rows are appended to the training data.
+PSEUDO_LABELS_CSV = os.environ.get("CS156B_PSEUDO_LABELS_CSV", "")
+
+# When 0, train on 100% of the labeled data (no held-out patients).
+# We still create a tiny dummy val loader for safety but the "best" model
+# becomes the final-epoch model.
+USE_VAL_SPLIT = os.environ.get("CS156B_USE_VAL_SPLIT", "1") == "1"
+
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
 TRAIN_CSV = DATA_ROOT / "student_labels" / "train2023.csv"
 CACHE_DIR = Path("/resnick/groups/CS156b/from_central/2026/JSC/cache_320")
@@ -207,9 +217,11 @@ def main():
     print(f"Warmup epochs (head only): {WARMUP_EPOCHS}")
     print(f"Mean imputation: {USE_MEAN_IMPUTATION}")
     print(f"CLAHE: {USE_CLAHE}")
+    print(f"Pseudo-labels CSV: {PSEUDO_LABELS_CSV or '(none)'}")
+    print(f"Use val split: {USE_VAL_SPLIT}")
 
     df = pd.read_csv(TRAIN_CSV)
-    print(f"\nLoaded {len(df):,} rows from CSV")
+    print(f"\nLoaded {len(df):,} rows from train CSV")
 
     missing_cols = [col for col in LABEL_COLS if col not in df.columns]
     if missing_cols:
@@ -228,13 +240,38 @@ def main():
     df = df[mask].reset_index(drop=True)
     print(f"Dropped {n_missing:,} rows with no cached image; {len(df):,} remain")
 
-    train_df, val_df = make_patient_split(df)
+    if USE_VAL_SPLIT:
+        train_df, val_df = make_patient_split(df)
+        print(f"\nTrain rows: {len(train_df):,}  patients: {train_df['patient_id'].nunique():,}")
+        print(f"Val rows:   {len(val_df):,}  patients: {val_df['patient_id'].nunique():,}")
+        train_df.to_csv(OUT_DIR / "train_split.csv", index=False)
+        val_df.to_csv(OUT_DIR / "val_split.csv", index=False)
+    else:
+        # Train on 100% of the labeled data -- no patients held back.
+        train_df = df.copy()
+        train_df["patient_id"] = train_df["Path"].apply(extract_patient_id)
+        val_df = train_df.sample(n=min(500, len(train_df)), random_state=SEED).copy()
+        print(f"\nTrain rows: {len(train_df):,}  patients: {train_df['patient_id'].nunique():,}")
+        print(f"Val rows:   {len(val_df):,}  (tiny monitoring sample, NOT held out)")
+        train_df.to_csv(OUT_DIR / "train_split.csv", index=False)
 
-    print(f"\nTrain rows: {len(train_df):,}  patients: {train_df['patient_id'].nunique():,}")
-    print(f"Val rows:   {len(val_df):,}  patients: {val_df['patient_id'].nunique():,}")
-
-    train_df.to_csv(OUT_DIR / "train_split.csv", index=False)
-    val_df.to_csv(OUT_DIR / "val_split.csv", index=False)
+    # Append pseudo-labels (e.g. ensemble predictions on the test set) if provided.
+    # These get treated as regular labeled training rows.
+    if PSEUDO_LABELS_CSV:
+        pseudo_df = pd.read_csv(PSEUDO_LABELS_CSV)
+        # Only keep rows whose images are cached.
+        pseudo_mask = pseudo_df["Path"].apply(
+            lambda p: str(Path(p).with_suffix("")) in cache_set
+        )
+        pseudo_df = pseudo_df[pseudo_mask].reset_index(drop=True)
+        # Drop any columns we don't need so the concat is clean.
+        keep_cols = ["Path"] + LABEL_COLS
+        pseudo_df = pseudo_df[[c for c in keep_cols if c in pseudo_df.columns]].copy()
+        if "patient_id" not in pseudo_df.columns:
+            pseudo_df["patient_id"] = pseudo_df["Path"].apply(extract_patient_id)
+        print(f"\nLoaded {len(pseudo_df):,} pseudo-label rows from {PSEUDO_LABELS_CSV}")
+        train_df = pd.concat([train_df, pseudo_df], ignore_index=True)
+        print(f"Combined train rows: {len(train_df):,}")
 
     # Per-pathology means computed on training data only (no val leakage).
     if USE_MEAN_IMPUTATION:
@@ -345,10 +382,16 @@ def main():
             mse_str = f"{mse:.4f}" if mse is not None else "n/a"
             print(f"    {name:30s}  MSE={mse_str}")
 
-        if val["mse"] < best_mse:
+        if USE_VAL_SPLIT:
+            if val["mse"] < best_mse:
+                best_mse = val["mse"]
+                save_checkpoint(model, best_path, epoch, best_mse)
+                print(f"  ** new best val MSE {best_mse:.4f} -> {best_path}")
+        else:
+            # No held-out val -- "best" is always the most recent epoch,
+            # so just keep overwriting.
+            save_checkpoint(model, best_path, epoch, val["mse"])
             best_mse = val["mse"]
-            save_checkpoint(model, best_path, epoch, best_mse)
-            print(f"  ** new best val MSE {best_mse:.4f} -> {best_path}")
 
         with open(OUT_DIR / "history.json", "w") as f:
             json.dump(history, f, indent=2)
