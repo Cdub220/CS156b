@@ -11,12 +11,12 @@ INPUTS = [
     (Path.home() / "Downloads/20260501_120326_submission1.csv", 1.0),  # v1
     (Path.home() / "Downloads/predictions_(4).csv",             1.0),  # v4
     (Path.home() / "Downloads/predictions(4)res.csv",           1.0),  # v5
-    # (Path.home() / "Downloads/predictions(5)dense.csv",         1.0),  # v6
+    (Path.home() / "Downloads/predictions(5)dense.csv",         1.0),  # v6
     (Path.home() / "Downloads/predictions_v7_clahe.csv",        1.0),  # v7 CLAHE
 ]
 
 
-OUT_PATH = Path.home() / "Downloads/predictions_ensemble6.csv"
+OUT_PATH = Path.home() / "Downloads/predictions_ensemble8.csv"
 
 
 def main():
