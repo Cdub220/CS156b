@@ -11,6 +11,7 @@ DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
 INPUT_CSVS = [
     DATA_ROOT / "student_labels" / "train2023.csv",
     DATA_ROOT / "student_labels" / "test_ids.csv",
+    DATA_ROOT / "student_labels" / "solution_ids.csv",
 ]
 OUT_ROOT = Path("/resnick/groups/CS156b/from_central/2026/JSC/cache_320")
 

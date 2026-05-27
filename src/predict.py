@@ -18,12 +18,19 @@ from model import make_backbone
 RUN_NAME = os.environ.get("CS156B_RUN_NAME", "v4_multitask_no_imputation")
 
 DATA_ROOT = Path("/resnick/groups/CS156b/from_central/data")
-TEST_CSV = DATA_ROOT / "student_labels" / "test_ids.csv"
+# Which CSV to run inference on. Defaults to test_ids.csv. For the final
+# submission, set CS156B_TEST_CSV to the private solution CSV.
+TEST_CSV = Path(os.environ.get(
+    "CS156B_TEST_CSV",
+    str(DATA_ROOT / "student_labels" / "test_ids.csv"),
+))
 CACHE_DIR = Path("/resnick/groups/CS156b/from_central/2026/JSC/cache_320")
 
 MODEL_DIR = Path("/resnick/groups/CS156b/from_central/2026/JSC/outputs") / RUN_NAME
 CKPT_PATH = MODEL_DIR / "best.pt"
-OUT_PATH = MODEL_DIR / "predictions.csv"
+# Output filename can be overridden so test and solution predictions
+# don't overwrite each other.
+OUT_PATH = MODEL_DIR / os.environ.get("CS156B_OUT_FILENAME", "predictions.csv")
 
 IMAGE_SIZE = 384  # must match training
 BATCH_SIZE = 64
